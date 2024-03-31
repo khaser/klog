@@ -12,12 +12,19 @@ int main() {
         return 1;
     }
 
-    const int N = 4096;
-    const char* msg = malloc(N);
-    if (write(fd, msg, N) == -1) {
-        printf("Write error: %d\n", errno);
+    const char* wrong_ptr = 0x7fffffff;
+    if (write(fd, wrong_ptr, 1) == -1) {
+        if (errno == EFAULT) {
+            return 0;
+        } else {
+            printf("Write error: %d, but expected EFAULT\n", errno);
+            return 2;
+        }
+    } else {
+        printf("Write error expected, but not occured\n");
         return 2;
     }
+
     if (close(fd) == -1) {
         printf("Close error\n");
         return 1;

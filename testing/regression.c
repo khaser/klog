@@ -17,6 +17,7 @@ int main() {
     }
     if (close(fd) == -1) {
         printf("Close error\n");
+        return 1;
     }
     return 0;
 }

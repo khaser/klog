@@ -26,15 +26,19 @@ static ssize_t klog_read(struct file *filp,
 
 static ssize_t klog_write(struct file *filp, const char __user *ubuf,
                          size_t len, loff_t *off) {
-    pr_info("KLOG: process %d writes %d bytes:\n", current->pid, len);
+    pr_info("KLOG: process %d try to write %d bytes\n", current->pid, len);
     const size_t N = 1024;
     char kbuf[N];
     int to_copy = (len > N ? N : len);
-    copy_from_user(&kbuf, ubuf, to_copy);
+    if (copy_from_user(&kbuf, ubuf, to_copy)) {
+        pr_info("KLOG: copy from user failed, return EFAULT\n", current->pid, len);
+        return -EFAULT;
+    }
     char msg[2 * N];
     for (int i = 0; i < to_copy; ++i) {
         sprintf(msg + i * 2, "%02x", kbuf[i]);
     }
+    pr_info("Write successful, see hex dump below:\n", msg);
     pr_info("%s", msg);
     pr_info("\n");
     return len;
@@ -60,15 +64,31 @@ static int __init klog_init(void)
 
     if ((res = cdev_add(&klog_dev, dev, 1)) < 0) {
         pr_err("KLOG: error on dev_add\n");
-        unregister_chrdev_region(dev, 1);
-        return res;
+        goto fail1;
     }
 
-    cls = class_create(THIS_MODULE, DEVICE_NAME);
-    device_create(cls, NULL, dev, 0, DEVICE_NAME);
+    if (IS_ERR(cls = class_create(THIS_MODULE, DEVICE_NAME))) {
+        pr_err("KLOG: error on class_create\n");
+        res = -1;
+        goto fail2;
+    }
+
+    if (IS_ERR(device_create(cls, NULL, dev, 0, DEVICE_NAME))) {
+        pr_err("KLOG: error on device_create\n");
+        res = -1;
+        goto fail3;
+    }
 
     pr_info("KLOG: device created successfully\n");
     return 0;
+
+    fail3:
+    class_destroy(cls);
+    fail2:
+    cdev_del(&klog_dev);
+    fail1:
+    unregister_chrdev_region(dev, 1);
+    return res;
 }
 
 static void __exit klog_cleanup(void) {
