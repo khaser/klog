@@ -12,7 +12,7 @@ int main() {
         return 1;
     }
 
-    const char* wrong_ptr = 0x7fffffff;
+    const char* wrong_ptr = (char*) 0x7fffffff;
     if (write(fd, wrong_ptr, 1) == -1) {
         if (errno == EFAULT) {
             return 0;

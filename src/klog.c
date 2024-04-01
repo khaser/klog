@@ -9,12 +9,13 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("andrei.khorokhorin@cloudbear.ru");
 MODULE_DESCRIPTION("Provide device for logging into dmesg buffer");
-MODULE_VERSION("0.0.1");
+MODULE_VERSION("0.0.2");
 
 dev_t dev = 0;
 static struct cdev klog_dev;
 static struct class *cls;
 #define DEVICE_NAME "klog"
+#define N 1024
 
 static ssize_t klog_read(struct file *filp,
                          char __user *buf,
@@ -24,21 +25,22 @@ static ssize_t klog_read(struct file *filp,
     return 0;
 }
 
+
+static char kbuf[N];
+static char msg[2 * N];
 static ssize_t klog_write(struct file *filp, const char __user *ubuf,
                          size_t len, loff_t *off) {
-    pr_info("KLOG: process %d try to write %d bytes\n", current->pid, len);
-    const size_t N = 1024;
-    char kbuf[N];
-    int to_copy = (len > N ? N : len);
+    int to_copy;
+    to_copy = (len > N ? N : len);
+    pr_info("KLOG: process %d try to write %lu bytes\n", current->pid, len);
     if (copy_from_user(&kbuf, ubuf, to_copy)) {
-        pr_info("KLOG: copy from user failed, return EFAULT\n", current->pid, len);
+        pr_info("KLOG: copy from user failed, return EFAULT\n");
         return -EFAULT;
     }
-    char msg[2 * N];
     for (int i = 0; i < to_copy; ++i) {
         sprintf(msg + i * 2, "%02x", kbuf[i]);
     }
-    pr_info("Write successful, see hex dump below:\n", msg);
+    pr_info("Write successful, see hex dump below:\n");
     pr_info("%s", msg);
     pr_info("\n");
     return len;
