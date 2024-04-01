@@ -15,7 +15,7 @@ dev_t dev = 0;
 static struct cdev klog_dev;
 static struct class *cls;
 #define DEVICE_NAME "klog"
-#define N 1024
+#define N 512
 
 static ssize_t klog_read(struct file *filp,
                          char __user *buf,
@@ -26,11 +26,11 @@ static ssize_t klog_read(struct file *filp,
 }
 
 
-static char kbuf[N];
-static char msg[2 * N];
 static ssize_t klog_write(struct file *filp, const char __user *ubuf,
                          size_t len, loff_t *off) {
     int to_copy;
+    char kbuf[N];
+    char msg[2 * N];
     to_copy = (len > N ? N : len);
     pr_info("KLOG: process %d try to write %lu bytes\n", current->pid, len);
     if (copy_from_user(&kbuf, ubuf, to_copy)) {
