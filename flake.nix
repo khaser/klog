@@ -11,33 +11,23 @@
     flake-utils.lib.eachDefaultSystem ( system:
     let
       pkgs = import nixpkgs { inherit system; };
-      kernel = pkgs.linuxKernel.kernels.linux_6_1;
+      khaser_kernel = khaser.nixosConfigurations.khaser-nixos.config.boot.kernelPackages.kernel;
+      # Module supports following LTS kernel versions:
+      supported_kernels = {
+        "linux_6.1" = pkgs.linuxKernel.kernels.linux_6_1;
+        "linux_6.6" = pkgs.linuxKernel.kernels.linux_6_6;
+      };
       configured-vim = khaser.lib.vim.override {
         extraRC = ''
-          let &path.="${kernel.dev}/lib/modules/6.1.68/build/source/include"
+          let &path.="${khaser_kernel.dev}/lib/modules/6.1.68/build/source/include"
           set colorcolumn=81
         '';
       };
-      klog-module = (pkgs.stdenv.mkDerivation rec {
-          name = "klog-${version}-${kernel.version}";
-          version = "0.0.1";
-
-          src = ./src;
-          installPhase = ''
-            mkdir $out
-            cp -r * $out/
-          '';
-
-          hardeningDisable = [ "pic" "format" ];
-          nativeBuildInputs = kernel.moduleBuildDependencies;
-          makeFlags = [
-            "KERNELRELEASE=${kernel.modDirVersion}"                                 # 3
-            "KERNEL_DIR=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"    # 4
-            "INSTALL_MOD_PATH=$(out)"                                               # 5
-          ];
-        });
+      pkgForKernel = (kernel: pkgs.callPackage ./default.nix { inherit kernel; });
     in {
-      packages.default = klog-module;
+      packages = {
+        default = (pkgForKernel khaser_kernel);
+      } // (builtins.mapAttrs (name: kernel: pkgForKernel kernel) supported_kernels);
 
       devShell = pkgs.mkShell {
         name = "linux-klog";

@@ -3,4 +3,4 @@ task-02.pdf
 examples/
 .envrc
 .direnv
-result
+result*

@@ -2,6 +2,7 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 
+#include <linux/version.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -9,7 +10,7 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("andrei.khorokhorin@cloudbear.ru");
 MODULE_DESCRIPTION("Provide device for logging into dmesg buffer");
-MODULE_VERSION("0.0.2");
+MODULE_VERSION("0.1.0");
 
 dev_t dev = 0;
 static struct cdev klog_dev;
@@ -69,7 +70,11 @@ static int __init klog_init(void)
         goto fail1;
     }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,4,0)
     if (IS_ERR(cls = class_create(THIS_MODULE, DEVICE_NAME))) {
+#else
+    if (IS_ERR(cls = class_create(DEVICE_NAME))) {
+#endif
         pr_err("KLOG: error on class_create\n");
         res = -1;
         goto fail2;
